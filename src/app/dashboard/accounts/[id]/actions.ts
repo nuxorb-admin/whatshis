@@ -14,6 +14,14 @@ const digits = (s: string) => s.replace(/\D/g, "");
 const toWaId = (n: string) =>
   /^52\d{10}$/.test(n) ? `521${n.slice(2)}` : /^54\d{10}$/.test(n) ? `549${n.slice(2)}` : n;
 
+/** El otro formato del mismo número (con o sin el 1/9 de móvil), o null si no aplica. */
+const alternateFormat = (n: string) =>
+  /^52\d{10}$/.test(n) || /^54\d{10}$/.test(n)
+    ? toWaId(n)
+    : /^521\d{10}$/.test(n) || /^549\d{10}$/.test(n)
+      ? n.slice(0, 2) + n.slice(3)
+      : null;
+
 export async function sendMessageAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const accountId = String(formData.get("account_id"));
   const to = digits(String(formData.get("to") ?? ""));
@@ -35,7 +43,15 @@ export async function sendMessageAction(_prev: ActionState, formData: FormData):
   if (input.kind === "text" && !input.text) return { ok: false, message: "Escribe un mensaje" };
 
   try {
-    const res = await sendMessage(ctx.account.phone_number_id, ctx.token, input);
+    let res;
+    try {
+      res = await sendMessage(ctx.account.phone_number_id, ctx.token, input);
+    } catch (err) {
+      // La lista de destinatarios de prueba guarda el número tal como se registró (52… o 521…).
+      const alt = alternateFormat(to);
+      if (!alt || !(err instanceof Error) || !err.message.includes("131030")) throw err;
+      res = await sendMessage(ctx.account.phone_number_id, ctx.token, { ...input, to: alt });
+    }
     const wamid = res.messages[0].id;
     const now = Math.floor(Date.now() / 1000).toString();
     const body = input.kind === "text" ? input.text : `[plantilla ${input.name}]`;
