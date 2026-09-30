@@ -29,13 +29,18 @@ export function SendMessageForm({
       <input type="hidden" name="kind" value={kind} />
       <input name="to" placeholder="Número destino con código de país (ej. 5215512345678)" className={input} required />
 
-      <div className="flex gap-4 text-sm">
-        <label className="flex items-center gap-1.5">
-          <input type="radio" checked={kind === "text"} onChange={() => setKind("text")} /> Texto
-        </label>
-        <label className="flex items-center gap-1.5">
-          <input type="radio" checked={kind === "template"} onChange={() => setKind("template")} /> Plantilla
-        </label>
+      {/* Botones en vez de radios: el reset automático del form tras la acción no los desincroniza. */}
+      <div className="inline-flex rounded-lg border border-neutral-300 p-0.5 text-sm">
+        {(["text", "template"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setKind(k)}
+            className={`rounded-md px-3 py-1 ${kind === k ? "bg-neutral-900 text-white" : "text-neutral-600"}`}
+          >
+            {k === "text" ? "Texto" : "Plantilla"}
+          </button>
+        ))}
       </div>
 
       {kind === "text" ? (
