@@ -10,6 +10,10 @@ export type ActionState = { ok: boolean; message: string } | null;
 
 const digits = (s: string) => s.replace(/\D/g, "");
 
+/** wa_id con el que WhatsApp identifica al contacto en los webhooks (México 521…, Argentina 549…). */
+const toWaId = (n: string) =>
+  /^52\d{10}$/.test(n) ? `521${n.slice(2)}` : /^54\d{10}$/.test(n) ? `549${n.slice(2)}` : n;
+
 export async function sendMessageAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const accountId = String(formData.get("account_id"));
   const to = digits(String(formData.get("to") ?? ""));
@@ -38,7 +42,7 @@ export async function sendMessageAction(_prev: ActionState, formData: FormData):
 
     await saveMessages(createAdminClient(), accountId, [
       {
-        contact: to,
+        contact: toWaId(to),
         wamid,
         direction: "outbound",
         source: "api",
