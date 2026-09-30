@@ -45,6 +45,61 @@ export function getPhoneNumber(phoneNumberId: string, token: string) {
   );
 }
 
+export type SendMessageInput =
+  | { kind: "text"; to: string; text: string }
+  | { kind: "template"; to: string; name: string; language: string };
+
+/**
+ * Envía un mensaje. El texto libre solo se entrega si el contacto escribió en las últimas 24 h;
+ * fuera de esa ventana hay que usar una plantilla aprobada.
+ */
+export function sendMessage(phoneNumberId: string, token: string, input: SendMessageInput) {
+  const body =
+    input.kind === "text"
+      ? { type: "text", text: { body: input.text } }
+      : { type: "template", template: { name: input.name, language: { code: input.language } } };
+
+  return graph<{ messages: { id: string }[] }>(`/${phoneNumberId}/messages`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to: input.to, ...body }),
+  });
+}
+
+export type MessageTemplate = {
+  id: string;
+  name: string;
+  language: string;
+  status: string;
+  category: string;
+  components: { type: string; text?: string }[];
+};
+
+export async function listTemplates(wabaId: string, token: string) {
+  const data = await graph<{ data: MessageTemplate[] }>(
+    `/${wabaId}/message_templates?fields=id,name,language,status,category,components&limit=100`,
+    { token },
+  );
+  return data.data;
+}
+
+export function createTemplate(
+  wabaId: string,
+  token: string,
+  input: { name: string; language: string; category: "UTILITY" | "MARKETING"; body: string },
+) {
+  return graph<{ id: string; status: string; category: string }>(`/${wabaId}/message_templates`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({
+      name: input.name,
+      language: input.language,
+      category: input.category,
+      components: [{ type: "BODY", text: input.body }],
+    }),
+  });
+}
+
 /**
  * Pide a Meta que sincronice contactos ("smb_app_state_sync") o historial ("history")
  * de la app WhatsApp Business. Solo se puede dentro de las 24 h posteriores al onboarding.

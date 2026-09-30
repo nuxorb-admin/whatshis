@@ -40,7 +40,12 @@ export default async function DashboardPage() {
                     <p className="font-medium">{a.verified_name ?? "Sin nombre"}</p>
                     <p className="text-sm text-neutral-500">+{a.display_phone_number}</p>
                   </div>
-                  <span className="text-xs text-neutral-500">Conectado {formatDate(a.onboarded_at)}</span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs text-neutral-500">Conectado {formatDate(a.onboarded_at)}</span>
+                    <Link href={`/dashboard/accounts/${a.id}`} className="text-sm underline">
+                      Mensajes y plantillas
+                    </Link>
+                  </div>
                 </div>
                 <div className="mt-3 space-y-1">
                   <p className="text-sm">

@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // Tipos mínimos de los payloads de webhook de WhatsApp que usamos.
-type WaMessage = {
+export type WaMessage = {
   id: string;
   from: string;
   to?: string;
@@ -36,11 +36,11 @@ export type WebhookPayload = {
 
 type Account = { id: string; display_phone_number: string | null };
 
-type MessageRow = {
+export type MessageRow = {
   contact: string;
   wamid: string;
   direction: "inbound" | "outbound";
-  source: "history" | "live" | "echo";
+  source: "history" | "live" | "echo" | "api";
   type: string;
   body: string | null;
   sent_at: string;
@@ -83,7 +83,7 @@ export function extractBody(msg: WaMessage): string | null {
 
 const toIso = (ts: string) => new Date(Number(ts) * 1000).toISOString();
 
-async function saveMessages(db: SupabaseClient, accountId: string, rows: MessageRow[]) {
+export async function saveMessages(db: SupabaseClient, accountId: string, rows: MessageRow[]) {
   if (rows.length === 0) return;
 
   const contacts = [...new Set(rows.map((r) => r.contact))];

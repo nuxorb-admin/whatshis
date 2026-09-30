@@ -16,6 +16,11 @@ export default function Home() {
           Crear cuenta
         </Link>
       </div>
+      <footer className="mt-12 text-sm text-neutral-500">
+        <Link href="/privacidad" className="underline">Privacidad</Link> ·{" "}
+        <Link href="/terminos" className="underline">Términos</Link> ·{" "}
+        <Link href="/eliminar-datos" className="underline">Eliminar datos</Link>
+      </footer>
     </main>
   );
 }
