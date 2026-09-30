@@ -25,7 +25,17 @@ export default async function AccountPage({ params }: PageProps<"/dashboard/acco
   } catch (err) {
     templatesError = err instanceof Error ? err.message : String(err);
   }
-  const approved = templates.filter((t) => t.status === "APPROVED");
+  // Solo plantillas enviables sin parámetros: texto sin variables {{n}} ni encabezado multimedia.
+  const sendable = templates
+    .filter(
+      (t) =>
+        t.status === "APPROVED" &&
+        t.components.every(
+          (c) => !c.text?.includes("{{") && (c.type !== "HEADER" || c.text !== undefined),
+        ) &&
+        t.components.every((c) => ["HEADER", "BODY", "FOOTER"].includes(c.type)),
+    )
+    .sort((a, b) => Number(b.name === "hello_world") - Number(a.name === "hello_world"));
 
   return (
     <div className="space-y-8">
@@ -41,7 +51,7 @@ export default async function AccountPage({ params }: PageProps<"/dashboard/acco
         <h2 className="font-semibold">Enviar mensaje</h2>
         <SendMessageForm
           accountId={account.id}
-          templates={approved.map((t) => ({ name: t.name, language: t.language }))}
+          templates={sendable.map((t) => ({ name: t.name, language: t.language }))}
         />
       </section>
 
