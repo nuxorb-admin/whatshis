@@ -46,6 +46,28 @@ const subRes = await fetch(`https://graph.facebook.com/${graphVersion}/${env.LIN
 });
 if (!subRes.ok) console.warn("Aviso: no se pudo suscribir la app a la WABA:", (await subRes.json()).error?.message);
 
+// Llamadas de prueba que App Review exige para cada permiso.
+const graphGet = async (label, path) => {
+  const res = await fetch(`https://graph.facebook.com/${graphVersion}/${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await res.json();
+  console.log(`${res.ok ? "OK   " : "FALLA"} ${label}${res.ok ? "" : ` — ${body.error?.message}`}`);
+  return res.ok ? body : null;
+};
+const waba = await graphGet(
+  "whatsapp_business_management: datos de la WABA",
+  `${env.LINK_WABA_ID}?fields=id,name,owner_business_info`,
+);
+await graphGet("whatsapp_business_management: plantillas", `${env.LINK_WABA_ID}/message_templates?limit=5`);
+const businessId = waba?.owner_business_info?.id;
+if (businessId) {
+  await graphGet("business_management: portafolio de negocio", `${businessId}?fields=id,name`);
+  await graphGet("business_management: WABAs del portafolio", `${businessId}/owned_whatsapp_business_accounts`);
+} else {
+  console.warn("Aviso: no se obtuvo el business ID; haz la llamada de business_management en el Graph API Explorer (GET me/businesses)");
+}
+
 const { data: account, error } = await db
   .from("whatsapp_accounts")
   .upsert(
@@ -53,6 +75,7 @@ const { data: account, error } = await db
       org_id: membership.org_id,
       waba_id: env.LINK_WABA_ID,
       phone_number_id: env.LINK_PHONE_NUMBER_ID,
+      business_id: businessId ?? null,
       display_phone_number: phone.display_phone_number.replace(/\D/g, ""),
       verified_name: phone.verified_name,
       status: "connected",
