@@ -63,7 +63,7 @@ export async function POST(request: Request) {
           waba_id: body.waba_id,
           phone_number_id: body.phone_number_id,
           business_id: body.business_id ?? null,
-          display_phone_number: phone.display_phone_number,
+          display_phone_number: phone.display_phone_number.replace(/\D/g, ""),
           verified_name: phone.verified_name,
           status: "onboarding",
           onboarded_at: new Date().toISOString(),
