@@ -42,6 +42,9 @@ export default async function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-4">
                     <span className="text-xs text-neutral-500">Conectado {formatDate(a.onboarded_at)}</span>
+                    <Link href={`/dashboard/accounts/${a.id}/analisis`} className="text-sm font-medium underline">
+                      Análisis
+                    </Link>
                     <Link href={`/dashboard/accounts/${a.id}`} className="text-sm underline">
                       Mensajes y plantillas
                     </Link>
