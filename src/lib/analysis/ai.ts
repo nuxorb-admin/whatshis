@@ -32,14 +32,7 @@ export const ConversationAnalysisSchema = z.object({
 });
 export type ConversationAnalysis = z.infer<typeof ConversationAnalysisSchema>;
 
-const CONVERSATION_SYSTEM = `Eres analista de atención al cliente para pequeños negocios en México.
-Recibirás una conversación de WhatsApp entre un negocio ("Negocio") y uno de sus clientes ("Cliente"), con fecha y hora local.
-Analízala con objetividad y responde en español con el formato pedido.
-
-Criterios:
-- "concretada": el cliente agendó/compró o confirmó. "perdida": pidió algo y no se cerró (no había horario, precio, dejó de responder tras una oferta). "sin_respuesta": el negocio no respondió la última solicitud. "en_curso": la conversación sigue abierta y es reciente. "no_aplica": no hubo solicitud comercial.
-- Los mensajes automáticos de bienvenida del negocio no cuentan como respuesta real.
-- Sé concreto y breve. No inventes datos que no estén en la conversación.`;
+// Los prompts de sistema son editables por administradores: ver prompts.ts y /dashboard/admin/prompts.
 
 function formatTranscript(messages: { direction: string; body: string | null; type: string; sent_at: string }[]) {
   const fmt = new Intl.DateTimeFormat("es-MX", {
@@ -57,6 +50,7 @@ function formatTranscript(messages: { direction: string; body: string | null; ty
 }
 
 export async function analyzeConversation(
+  systemPrompt: string,
   businessName: string,
   messages: { direction: string; body: string | null; type: string; sent_at: string }[],
 ): Promise<ConversationAnalysis> {
@@ -65,7 +59,7 @@ export async function analyzeConversation(
     max_tokens: 4000,
     ...FALLBACK,
     output_config: { effort: "medium", format: betaZodOutputFormat(ConversationAnalysisSchema) },
-    system: [{ type: "text", text: CONVERSATION_SYSTEM, cache_control: { type: "ephemeral" } }],
+    system: [{ type: "text", text: systemPrompt, cache_control: { type: "ephemeral" } }],
     messages: [
       {
         role: "user",
@@ -95,12 +89,8 @@ export const BusinessSummarySchema = z.object({
 });
 export type BusinessSummary = z.infer<typeof BusinessSummarySchema>;
 
-const SUMMARY_SYSTEM = `Eres consultor de negocio para pequeñas empresas en México.
-Recibirás métricas de atención por WhatsApp y el análisis de cada conversación de un negocio.
-Escribe un diagnóstico útil para el dueño: claro, directo, en español, sin jerga técnica.
-Basa cada afirmación en los datos recibidos y menciona cifras. No inventes información.`;
-
 export async function summarizeBusiness(
+  systemPrompt: string,
   businessName: string,
   metrics: Metrics,
   conversations: { cliente: string; analisis: ConversationAnalysis }[],
@@ -118,7 +108,7 @@ export async function summarizeBusiness(
     max_tokens: 8000,
     ...FALLBACK,
     output_config: { effort: "high", format: betaZodOutputFormat(BusinessSummarySchema) },
-    system: SUMMARY_SYSTEM,
+    system: systemPrompt,
     messages: [{ role: "user", content: JSON.stringify(payload) }],
   });
 

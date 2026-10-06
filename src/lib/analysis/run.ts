@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { analyzeConversation, summarizeBusiness, MODEL, type ConversationAnalysis } from "./ai";
 import { computeMetrics, type MetricMessage } from "./metrics";
+import { DEFAULT_PROMPTS, getActivePrompt, promptHash } from "./prompts";
 
 const CONCURRENCY = 4;
 
@@ -43,6 +44,13 @@ export async function runAccountAnalysis(runId: string, accountId: string) {
       .single();
     const businessName = account?.verified_name ?? `+${account?.display_phone_number}`;
 
+    const [conversationPrompt, summaryPrompt] = await Promise.all([
+      getActivePrompt(db, "conversation"),
+      getActivePrompt(db, "summary"),
+    ]);
+    // Análisis guardados antes de que existiera prompt_hash se hicieron con el prompt predeterminado.
+    const defaultConversationHash = promptHash(DEFAULT_PROMPTS.conversation);
+
     const [{ data: conversations }, { data: contacts }, { data: previous }, messages] = await Promise.all([
       db.from("conversations").select("id, contact_wa_id, last_message_at").eq("account_id", accountId),
       db.from("contacts").select("wa_id, full_name").eq("account_id", accountId),
@@ -64,7 +72,7 @@ export async function runAccountAnalysis(runId: string, accountId: string) {
     );
     await db.from("analysis_runs").update({ conversations_total: targets.length }).eq("id", runId);
 
-    const latestPrevious = new Map<string, { result: ConversationAnalysis; created_at: string }>();
+    const latestPrevious = new Map<string, { result: ConversationAnalysis & { prompt_hash?: string }; created_at: string }>();
     for (const p of previous ?? []) if (!latestPrevious.has(p.conversation_id)) latestPrevious.set(p.conversation_id, p);
 
     const nameOf = (waId: string) => contacts?.find((c) => c.wa_id === waId)?.full_name ?? `+${waId}`;
@@ -73,15 +81,16 @@ export async function runAccountAnalysis(runId: string, accountId: string) {
     await mapWithConcurrency(targets, CONCURRENCY, async (conv) => {
       const prev = latestPrevious.get(conv.id);
       let analysis: ConversationAnalysis;
-      if (prev && conv.last_message_at && prev.created_at >= conv.last_message_at) {
-        analysis = prev.result; // sin mensajes nuevos desde el último análisis
+      const samePrompt = (prev?.result.prompt_hash ?? defaultConversationHash) === conversationPrompt.hash;
+      if (prev && samePrompt && conv.last_message_at && prev.created_at >= conv.last_message_at) {
+        analysis = prev.result; // sin mensajes nuevos ni cambios de prompt desde el último análisis
       } else {
-        analysis = await analyzeConversation(businessName, byConversation.get(conv.id)!);
+        analysis = await analyzeConversation(conversationPrompt.content, businessName, byConversation.get(conv.id)!);
         const { error } = await db.from("analyses").insert({
           account_id: accountId,
           conversation_id: conv.id,
           kind: "conversation",
-          result: { ...analysis, model: MODEL },
+          result: { ...analysis, model: MODEL, prompt_hash: conversationPrompt.hash },
         });
         if (error) throw error;
       }
@@ -90,11 +99,11 @@ export async function runAccountAnalysis(runId: string, accountId: string) {
     });
 
     const metrics = computeMetrics(messages);
-    const summary = await summarizeBusiness(businessName, metrics, results);
+    const summary = await summarizeBusiness(summaryPrompt.content, businessName, metrics, results);
 
     const { error } = await db.from("analyses").insert([
       { account_id: accountId, kind: "metrics", result: metrics },
-      { account_id: accountId, kind: "summary", result: { ...summary, model: MODEL } },
+      { account_id: accountId, kind: "summary", result: { ...summary, model: MODEL, prompt_hash: summaryPrompt.hash } },
     ]);
     if (error) throw error;
 

@@ -40,11 +40,19 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold">Administración</h1>
-        <p className="text-sm text-neutral-500">
-          {rows.length} números registrados · {totals.conversations} conversaciones · {totals.messages} mensajes
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold">Administración</h1>
+          <p className="text-sm text-neutral-500">
+            {rows.length} números registrados · {totals.conversations} conversaciones · {totals.messages} mensajes
+          </p>
+        </div>
+        <Link
+          href="/dashboard/admin/prompts"
+          className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium"
+        >
+          Prompts del análisis
+        </Link>
       </div>
 
       {error && <p className="text-sm text-red-600">{error.message}</p>}
