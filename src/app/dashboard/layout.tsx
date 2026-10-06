@@ -7,6 +7,7 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const { data: isAdmin } = await supabase.rpc("is_admin");
 
   return (
     <div className="flex flex-1 flex-col">
@@ -16,6 +17,11 @@ export default async function DashboardLayout({ children }: LayoutProps<"/dashbo
             Chat Insights
           </Link>
           <div className="flex items-center gap-4 text-sm text-neutral-600">
+            {isAdmin && (
+              <Link href="/dashboard/admin" className="font-medium text-neutral-900 underline">
+                Administración
+              </Link>
+            )}
             <span>{user?.email}</span>
             <form action={logout}>
               <button className="underline">Salir</button>

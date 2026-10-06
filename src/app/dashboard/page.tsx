@@ -5,17 +5,26 @@ import { formatDate, historyStatusLabel } from "@/lib/format";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Solo los números de la organización del usuario (un admin ve los de todos en /dashboard/admin).
+  const { data: memberships } = await supabase.from("memberships").select("org_id").eq("user_id", user!.id);
+  const orgIds = (memberships ?? []).map((m) => m.org_id);
 
   const { data: accounts } = await supabase
     .from("whatsapp_accounts")
     .select(
       "id, display_phone_number, verified_name, status, history_sync_status, history_progress, last_error, onboarded_at",
     )
+    .in("org_id", orgIds)
     .order("created_at", { ascending: false });
 
   const { data: conversations } = await supabase
     .from("conversations")
     .select("id, account_id, contact_wa_id, last_message_at")
+    .in("account_id", (accounts ?? []).map((a) => a.id))
     .order("last_message_at", { ascending: false, nullsFirst: false })
     .limit(50);
 
